@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>My Custom Map</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.4.3/css/ol.css"
+    type="text/css">
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    .map {
+      height: 100vh;
+      width: 100%;
+    }
+
+    .ol-popup {
+      position: absolute;
+      background: white;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #aaa;
+      bottom: 12px;
+      left: -50px;
+      min-width: 120px;
+    }
+
+    .ol-popup-closer {
+      text-decoration: none;
+      position: absolute;
+      top: 4px;
+      right: 8px;
+    }
+
+    .ol-popup-closer:after {
+      content: "✖";
+    }
+
+    /* Style attribution text a bit smaller */
+    .ol-attribution {
+      font-size: 12px;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.4.3/build/ol.js"></script>
+  <script>
+    // Dynamically load data file (default: where.js)
+    const urlParams = new URLSearchParams(window.location.search);
+    const dataFile = urlParams.get('data') || 'where.js';
+    document.write('<script src="' + dataFile + '"><\/script>');
+  </script>
+</head>
+
+<body>
+  <div id="map" class="map"></div>
+  <div id="popup" class="ol-popup">
+    <a href="#" id="popup-closer" class="ol-popup-closer"></a>
+    <div id="popup-content"></div>
+  </div>
+
+  <div id="credit" style="
+    position: absolute;
+    bottom: 5px;
+    left: 10px;
+    font-size: 12px;
+    background: rgba(255,255,255,0.7);
+    padding: 3px 6px;
+    border-radius: 4px;">
+    Built by <a href="https://github.com/khushi-n-murthy" target="_blank">Khushi N</a> |
+    <a href="https://github.com/khushi-n-murthy/map-visualizer" target="_blank">View Source</a>
+  </div>
+
+  <script type="text/javascript">
+    // Popup setup
+    var container = document.getElementById('popup');
+    var content = document.getElementById('popup-content');
+    var closer = document.getElementById('popup-closer');
+    var overlay = new ol.Overlay({
+      element: container,
+      autoPan: true,
+      autoPanAnimation: { duration: 250 }
+    });
+    closer.onclick = function () {
+      overlay.setPosition(undefined);
+      closer.blur();
+      return false;
+    };
+
+    // Base map
+    var map = new ol.Map({
+      target: 'map',
+      overlays: [overlay],
+      layers: [
+        new ol.layer.Tile({
+          source: new ol.source.OSM()
+        })
+      ],
+      view: new ol.View({
+        center: ol.proj.fromLonLat([77.5946, 12.9716]), // Bangalore
+        zoom: 3
+      }),
+      controls: ol.control.defaults().extend([
+        new ol.control.Attribution({
+          collapsible: false
+        })
+      ])
+    });
+
+    // Add markers from where.js
+    var features = [];
+    for (var i in myData) {
+      var row = myData[i];
+      var latitude = row[0];
+      var longitude = row[1];
+      var name = row[2];
+      var feature = new ol.Feature({
+        geometry: new ol.geom.Point(ol.proj.fromLonLat([longitude, latitude])),
+        name: name
+      });
+      feature.setStyle(new ol.style.Style({
+        image: new ol.style.Icon({
+          anchor: [0.5, 1],
+          src: "https://cdn.mapmarker.io/api/v1/font-awesome/v5/pin?icon=fa-map-marker&color=%23ff0000&size=40"
+        })
+      }));
+      features.push(feature);
+    }
+
+    var vectorSource = new ol.source.Vector({ features: features });
+    var vectorLayer = new ol.layer.Vector({ source: vectorSource });
+    map.addLayer(vectorLayer);
+
+    // Popup on click
+    map.on('singleclick', function (evt) {
+      var name = map.forEachFeatureAtPixel(evt.pixel, function (feature) {
+        return feature.get('name');
+      });
+      if (name) {
+        content.innerHTML = name;
+        overlay.setPosition(evt.coordinate);
+      } else {
+        overlay.setPosition(undefined);
+      }
+    });
+
+    // Change cursor on hover
+    map.on('pointermove', function (evt) {
+      map.getTargetElement().style.cursor = map.hasFeatureAtPixel(evt.pixel) ? 'pointer' : '';
+    });
+
+  </script>
+</body>
+
+</html>
